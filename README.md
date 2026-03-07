@@ -52,6 +52,7 @@ sensor:
 ## Lovelace Card
 
 A companion Lovelace card is available in a separate repository for displaying scores on your dashboard.
+https://github.com/viktoro/ha-myscoreboard-card
 
 ## Sensor Data
 
