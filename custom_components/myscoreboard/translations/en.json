@@ -1,0 +1,35 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add a league",
+        "description": "Choose a sport/league to track scores for. There are {leagues_count} leagues available.",
+        "data": {
+          "league": "League",
+          "name": "Display name (optional)",
+          "teams": "Filter teams (optional, comma-separated abbreviations e.g. BOS, NYR)",
+          "scan_interval": "Poll interval in seconds (30-3600)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This league is already configured with that name."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Edit league settings",
+        "data": {
+          "league": "League",
+          "name": "Display name",
+          "teams": "Filter teams (comma-separated abbreviations)",
+          "scan_interval": "Poll interval in seconds (30-3600)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "name": "MyScoreboard"
+  }
+}
