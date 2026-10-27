@@ -36,13 +36,16 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
             teams: ["BOS", "NYR"]
           - league: "ENG_PREMIER_LEAGUE"
             name: "Premier League"
+        time_format: "24h"  # optional, "12h" (default) or "24h"
     """
     tracked = config.get("tracked", [])
     if not tracked:
         return
 
     session = aiohttp_client.async_get_clientsession(hass)
-    coordinator = ESPNCoordinator(hass, session, tracked)
+    coordinator = ESPNCoordinator(
+        hass, session, tracked, time_format=config.get("time_format")
+    )
 
     # Use async_refresh for YAML-based setup (not config entry)
     await coordinator.async_refresh()

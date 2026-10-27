@@ -3,7 +3,14 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
 
-from .const import DOMAIN, LEAGUE_PATHS, LEAGUE_NAMES, DEFAULT_SCAN_INTERVAL
+from .const import (
+    DOMAIN,
+    LEAGUE_PATHS,
+    LEAGUE_NAMES,
+    DEFAULT_SCAN_INTERVAL,
+    DEFAULT_TIME_FORMAT,
+    TIME_FORMATS,
+)
 
 
 def _league_options() -> dict[str, str]:
@@ -36,6 +43,7 @@ class MyScoreboardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
             scan_interval = user_input.get("scan_interval", DEFAULT_SCAN_INTERVAL)
+            time_format = user_input.get("time_format", DEFAULT_TIME_FORMAT)
 
             # Build the tracked list (single entry per config entry)
             tracked = [{"league": league, "name": name}]
@@ -48,7 +56,11 @@ class MyScoreboardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             return self.async_create_entry(
                 title=name,
-                data={"tracked": tracked, "scan_interval": scan_interval},
+                data={
+                    "tracked": tracked,
+                    "scan_interval": scan_interval,
+                    "time_format": time_format,
+                },
             )
 
         league_opts = _league_options()
@@ -61,6 +73,9 @@ class MyScoreboardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(
                     "scan_interval", default=DEFAULT_SCAN_INTERVAL
                 ): vol.All(int, vol.Range(min=30, max=3600)),
+                vol.Optional("time_format", default=DEFAULT_TIME_FORMAT): vol.In(
+                    TIME_FORMATS
+                ),
             }
         )
 
@@ -103,6 +118,7 @@ class MyScoreboardOptionsFlow(config_entries.OptionsFlow):
             )
 
             scan_interval = user_input.get("scan_interval", DEFAULT_SCAN_INTERVAL)
+            time_format = user_input.get("time_format", DEFAULT_TIME_FORMAT)
 
             new_tracked = [{"league": league, "name": name}]
             if teams:
@@ -111,7 +127,11 @@ class MyScoreboardOptionsFlow(config_entries.OptionsFlow):
             self.hass.config_entries.async_update_entry(
                 self.config_entry,
                 title=name,
-                data={"tracked": new_tracked, "scan_interval": scan_interval},
+                data={
+                    "tracked": new_tracked,
+                    "scan_interval": scan_interval,
+                    "time_format": time_format,
+                },
             )
             return self.async_create_entry(title="", data={})
 
@@ -132,6 +152,12 @@ class MyScoreboardOptionsFlow(config_entries.OptionsFlow):
                         "scan_interval", DEFAULT_SCAN_INTERVAL
                     ),
                 ): vol.All(int, vol.Range(min=30, max=3600)),
+                vol.Optional(
+                    "time_format",
+                    default=self.config_entry.data.get(
+                        "time_format", DEFAULT_TIME_FORMAT
+                    ),
+                ): vol.In(TIME_FORMATS),
             }
         )
 

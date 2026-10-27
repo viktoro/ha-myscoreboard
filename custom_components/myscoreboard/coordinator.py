@@ -1,11 +1,15 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone, tzinfo
 import logging
+from zoneinfo import ZoneInfo
+
 import async_timeout
 
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import (
     DEFAULT_SCAN_INTERVAL,
+    DEFAULT_TIME_FORMAT,
+    TIME_FORMAT_24H,
     LEAGUE_PATHS,
     GAME_STATE_PRE,
     GAME_STATE_LIVE,
@@ -104,7 +108,35 @@ def parse_status_text(status_type_id: str, status_obj: dict) -> str:
             return type_info.get("detail", "Unknown")
 
 
-def parse_event(event: dict, league: str, teams_filter: list | None = None) -> dict | None:
+def format_start_time(
+    start_time: str | None, tz: tzinfo | None, time_format: str = DEFAULT_TIME_FORMAT
+) -> str | None:
+    """Format an ESPN UTC timestamp (e.g. '2026-03-05T00:00Z') as a local clock time."""
+    if not start_time:
+        return None
+    try:
+        dt = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    if tz is not None:
+        dt = dt.astimezone(tz)
+
+    if time_format == TIME_FORMAT_24H:
+        return f"{dt.hour:02d}:{dt.minute:02d}"
+    hour = dt.hour % 12 or 12
+    suffix = "AM" if dt.hour < 12 else "PM"
+    return f"{hour}:{dt.minute:02d} {suffix}"
+
+
+def parse_event(
+    event: dict,
+    league: str,
+    teams_filter: list | None = None,
+    tz: tzinfo | None = None,
+    time_format: str = DEFAULT_TIME_FORMAT,
+) -> dict | None:
     """Parse a single ESPN event into a structured game dict."""
     comps = event.get("competitions", [])
     if not comps:
@@ -145,6 +177,12 @@ def parse_event(event: dict, league: str, teams_filter: list | None = None) -> d
     status_type_id = str(status_obj.get("type", {}).get("id", "0"))
     game_state = parse_game_state(status_type_id)
     status_text = parse_status_text(status_type_id, status_obj)
+
+    # ESPN's scheduled text is US Eastern with AM/PM; show local time instead
+    if status_type_id == "1" and comp.get("timeValid", True):
+        local_time = format_start_time(event.get("date"), tz, time_format)
+        if local_time:
+            status_text = local_time
 
     # For college sports, use abbreviation + name
     is_college = league.startswith("NCAA")
@@ -225,7 +263,7 @@ def parse_event(event: dict, league: str, teams_filter: list | None = None) -> d
 class ESPNCoordinator(DataUpdateCoordinator):
     """Fetches scoreboard data from ESPN for configured leagues."""
 
-    def __init__(self, hass, session, tracked, scan_interval=None):
+    def __init__(self, hass, session, tracked, scan_interval=None, time_format=None):
         super().__init__(
             hass,
             _LOGGER,
@@ -234,10 +272,12 @@ class ESPNCoordinator(DataUpdateCoordinator):
         )
         self.session = session
         self.tracked = tracked  # list of dicts with league, name, teams, date keys
+        self.time_format = time_format or DEFAULT_TIME_FORMAT
 
     async def _async_update_data(self):
         results = {}
         today = datetime.utcnow().strftime("%Y%m%d")
+        tz = self._local_tz()
 
         for item in self.tracked:
             league = item.get("league", "")
@@ -275,7 +315,7 @@ class ESPNCoordinator(DataUpdateCoordinator):
 
             games = []
             for ev in events:
-                parsed = parse_event(ev, league, teams_filter)
+                parsed = parse_event(ev, league, teams_filter, tz, self.time_format)
                 if parsed is not None:
                     games.append(parsed)
 
@@ -290,3 +330,10 @@ class ESPNCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Fetched %d games for %s (%s)", len(games), name, league)
 
         return results
+
+    def _local_tz(self) -> tzinfo | None:
+        """Home Assistant's configured time zone."""
+        try:
+            return ZoneInfo(self.hass.config.time_zone)
+        except Exception:  # noqa: BLE001
+            return None

@@ -1,6 +1,11 @@
 DOMAIN = "myscoreboard"
 DEFAULT_SCAN_INTERVAL = 120
 
+TIME_FORMAT_12H = "12h"
+TIME_FORMAT_24H = "24h"
+TIME_FORMATS = {TIME_FORMAT_12H: "12-hour (7:00 PM)", TIME_FORMAT_24H: "24-hour (19:00)"}
+DEFAULT_TIME_FORMAT = TIME_FORMAT_12H
+
 LEAGUE_PATHS = {
     # North American Leagues
     "NCAAF": "football/college-football",

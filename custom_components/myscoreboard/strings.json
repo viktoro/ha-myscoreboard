@@ -8,7 +8,8 @@
           "league": "League",
           "name": "Display name (optional)",
           "teams": "Filter teams (optional, comma-separated abbreviations e.g. BOS, NYR)",
-          "scan_interval": "Poll interval in seconds (30-3600)"
+          "scan_interval": "Poll interval in seconds (30-3600)",
+          "time_format": "Game time format (shown in your Home Assistant time zone)"
         }
       }
     },
@@ -24,7 +25,8 @@
           "league": "League",
           "name": "Display name",
           "teams": "Filter teams (comma-separated abbreviations)",
-          "scan_interval": "Poll interval in seconds (30-3600)"
+          "scan_interval": "Poll interval in seconds (30-3600)",
+          "time_format": "Game time format (shown in your Home Assistant time zone)"
         }
       }
     }

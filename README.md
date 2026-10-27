@@ -35,6 +35,7 @@ You can configure:
 - **Display name** — optional custom name for the sensor
 - **Filter teams** — comma-separated team abbreviations (e.g. `BOS, NYR`)
 - **Poll interval** — how often to fetch scores (30–3600 seconds, default 120)
+- **Game time format** — 12-hour (`7:00 PM`) or 24-hour (`19:00`) start times for upcoming games, shown in your Home Assistant time zone
 
 ### YAML
 
@@ -47,6 +48,7 @@ sensor:
         teams: ["BOS", "NYR"]
       - league: "ENG_PREMIER_LEAGUE"
         name: "Premier League"
+    time_format: "24h"  # optional, "12h" (default) or "24h"
 ```
 
 ## Lovelace Card

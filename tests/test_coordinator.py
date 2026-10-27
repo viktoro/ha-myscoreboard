@@ -1,7 +1,11 @@
 """Unit tests for coordinator pure functions."""
 
 import pytest
+from datetime import timezone, timedelta
+from zoneinfo import ZoneInfo
+
 from myscoreboard.coordinator import (
+    format_start_time,
     resolve_league_path,
     build_espn_url,
     parse_game_state,
@@ -196,3 +200,54 @@ class TestParseEvent:
         assert result["home_score"] is None
         assert result["away_score"] is None
         assert result["game_state"] == GAME_STATE_PRE
+
+
+class TestFormatStartTime:
+    def test_12h_local(self):
+        tz = ZoneInfo("America/New_York")
+        assert format_start_time("2026-03-05T00:00Z", tz, "12h") == "7:00 PM"
+
+    def test_24h_local(self):
+        tz = ZoneInfo("Europe/Stockholm")
+        assert format_start_time("2026-03-05T18:30Z", tz, "24h") == "19:30"
+
+    def test_midnight_12h(self):
+        assert format_start_time("2026-03-05T00:05Z", timezone.utc, "12h") == "12:05 AM"
+
+    def test_noon_12h(self):
+        assert format_start_time("2026-03-05T12:00Z", timezone.utc, "12h") == "12:00 PM"
+
+    def test_dst(self):
+        tz = ZoneInfo("Europe/Stockholm")
+        assert format_start_time("2026-07-01T17:00Z", tz, "24h") == "19:00"
+
+    def test_invalid(self):
+        assert format_start_time("garbage", timezone.utc) is None
+        assert format_start_time(None, timezone.utc) is None
+
+
+class TestParseEventLocalTime:
+    def _scheduled(self, **kw):
+        event = _make_event(status_id="1", **kw)
+        event["status"]["type"]["shortDetail"] = "3/4 - 7:00 PM EST"
+        return event
+
+    def test_scheduled_uses_local_24h(self):
+        tz = ZoneInfo("Europe/Stockholm")
+        result = parse_event(self._scheduled(), "NHL", tz=tz, time_format="24h")
+        assert result["status"] == "01:00"
+
+    def test_scheduled_uses_local_12h(self):
+        tz = timezone(timedelta(hours=-8))
+        result = parse_event(self._scheduled(), "NHL", tz=tz, time_format="12h")
+        assert result["status"] == "4:00 PM"
+
+    def test_time_not_valid_keeps_espn_text(self):
+        event = self._scheduled()
+        event["competitions"][0]["timeValid"] = False
+        result = parse_event(event, "NHL", tz=timezone.utc, time_format="24h")
+        assert result["status"] == "3/4 - 7:00 PM EST"
+
+    def test_final_not_affected(self):
+        result = parse_event(_make_event(), "NHL", tz=timezone.utc, time_format="24h")
+        assert result["status"] == "Final"
